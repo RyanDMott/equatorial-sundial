@@ -191,24 +191,29 @@ module base_disc() {
 
 // Cut plane through y-axis - normal makes angle with -x axis = latitude
 module cut_plane() {
-    rotate([0, latitude, 0])
-        translate([-outer_radius, 0, 0])
-            cube(2 * ( outer_radius ), center = true);
+    rotate([0, 90-latitude, 0])
+        translate([-support_radius, 0, 0])
+            cube(2 * ( support_radius ), center = true);
 }
 
 union() {
     // Step 1-3: Create annulus with text, rotate by longitude, then cut
     difference() {
-        rotate([0, 0, longitude_rotation]) {
-            rotate([0, 0, hour_angle]) {
-                // Annulus with embossed text
-                difference() {
-                    annulus();
-                    // Subtract hour numbers (emboss into surface)
-                    hour_numbers(top_face = true, rotation_offset = 0);
-                    hour_numbers(top_face = false, rotation_offset = 360/segments); // Offset by 1 segment
+        union() {
+            rotate([0, 0, longitude_rotation]) {
+                rotate([0, 0, hour_angle]) {
+                    // Annulus with embossed text
+                    difference() {
+                        annulus();
+                        // Subtract hour numbers (emboss into surface)
+                        hour_numbers(top_face = true, rotation_offset = 0);
+                        hour_numbers(top_face = false, rotation_offset = 360/segments); // Offset by 1 segment
+                    }
                 }
-            }
+            };
+    
+            // Support arc
+            support_arc();
         }
             
         // Cut by plane through y-axis
@@ -218,9 +223,6 @@ union() {
     // Step 4: Add support structures (only rotated by hour_angle, not longitude)
     // Central sphere
     sphere(r = sphere_radius, $fn = 64);
-    
-    // Support arc
-    support_arc();
     
     // Tapered shaft
     support_shaft();
