@@ -4,11 +4,11 @@
 use <analemma_groove.scad>
 
 // ===== INPUT PARAMETERS =====
-latitude = 51.5 * 0 + 1 * 50.11;           // Latitude of location (degrees, positive = North)
+latitude = 51.5 * 0 + 0 * 10 + 1 * 50.11;           // Latitude of location (degrees, positive = North)
 longitude = -0.1 * 0 + 14.44 * 1;         // Longitude of location (degrees, positive = East)
-time_now = 4 * 0 + 1 * 5;             // Current local time (24-hour format)
-time_london = 4 * 1;          // Current time in London (24-hour format)
-is_daylight_saving = false; // Is time_now daylight saving time?
+time_now = 4 * 0 + 1 * 2;             // Current local time (24-hour format)
+time_gmt = 1 * 0;          // Current Greenwich Mean Time (24-hour format)
+is_daylight_saving = true; // Is time_now daylight saving time?
 
 // ===== DESIGN PARAMETERS =====
 earth_tilt = 23.44;        // Earth's axial tilt in degrees
@@ -29,6 +29,7 @@ shaft_radius_mid = 3;      // Radius of main shaft
 shaft_taper_fraction = 1/3; // Fraction of shaft that is tapered
 base_disc_radius = inner_radius * 0.5;     // Radius of base disc
 base_disc_thickness = 4;   // Thickness of base disc
+spacer_height = 16;        // Raise above the base disc 
 
 // ===== DERIVED PARAMETERS =====
 outer_radius = inner_radius + annulus_thickness;
@@ -37,7 +38,7 @@ is_northern = latitude > 0;
 
 // Calculate time offset (hours difference between local time and London)
 effective_time_now = time_now - (is_daylight_saving ? 1 : 0);
-time_offset = ( effective_time_now - time_london + 12 ) % 24 - 12;
+time_offset = ( effective_time_now - time_gmt + 12 ) % 24 - 12;
 
 // Hour angle rotation (counterclockwise for time ahead of London)
 hour_angle = time_offset * 15; // 15 degrees per hour (360/24)
@@ -52,8 +53,9 @@ support_radius = inner_radius + support_width;
 // Height to reach earth_tilt elevation with half-angle cone
 solstice_height = inner_radius * sin(earth_tilt);
 
-// shift base towards center of mass. Close except near arctic circle.
+// shift base towards center of mass. Close except near equator?
 base_offset = inner_radius * 0.25 * ( is_northern ? 1 : - 1 );
+spacer_length = 2 * ( base_disc_radius - base_offset ) - 1;
 
 // ===== HELPER MODULES =====
 
@@ -227,7 +229,8 @@ module base_disc() {
 
 // Cut plane through y-axis - normal makes angle with -x axis = latitude
 module cut_plane() {
-    rotate([0, 90-latitude, 0])
+    // Had been 90-latitude, which I don't think is right
+    rotate([0, latitude, 0])
         translate([-support_radius, 0, 0])
             cube(2 * ( support_radius ), center = true);
 }
@@ -265,7 +268,13 @@ union() {
     
     // Base disc - rotated to be perpendicular to cut plane normal
     // Position at end of support arc
-    rotate([0, -latitude, 0])
-        translate([base_offset, 0, -support_radius])
+    rotate([0, latitude-90, 0])
+    union()
+    {
+        translate([0, 0, -inner_radius-spacer_height/2])
+        cube([spacer_length, support_thickness, spacer_height], center=true);
+        
+        translate([base_offset, 0, -support_radius+support_width-spacer_height])
             base_disc();    
+    }
 }
