@@ -2,18 +2,18 @@
 // The annulus is aligned with Earth's equator, and a sphere casts shadows to indicate time
 
 // ===== INPUT PARAMETERS =====
-latitude = 40.7;           // Latitude of location (degrees, positive = North)
-longitude = -74.0;         // Longitude of location (degrees, positive = East)
-time_now = 14;             // Current local time (24-hour format)
-time_london = 19;          // Current time in London (24-hour format)
+latitude = 51.5 * 0 + 1 * 50.11;           // Latitude of location (degrees, positive = North)
+longitude = -0.1 * 0 + 14.44 * 1;         // Longitude of location (degrees, positive = East)
+time_now = 4 * 0 + 1 * 5;             // Current local time (24-hour format)
+time_london = 4 * 1;          // Current time in London (24-hour format)
 is_daylight_saving = false; // Is time_now daylight saving time?
 
 // ===== DESIGN PARAMETERS =====
 earth_tilt = 23.44;        // Earth's axial tilt in degrees
 inner_radius = 50;         // Inner radius of annulus in mm
-annulus_thickness = 5;     // Radial thickness of annulus
+annulus_thickness = 3;     // Radial thickness of annulus
 segments = 24;             // Number of segments (24 for hours)
-sphere_radius = 4;         // Fixed radius of central sphere in mm
+sphere_radius = 2;         // Fixed radius of central sphere in mm
 
 // Text parameters
 text_height = 2;           // Embossing depth for numbers
@@ -25,7 +25,7 @@ support_thickness = 3;     // Thickness of support arc
 shaft_radius_top = sphere_radius * 0.7;  // Radius at sphere (30% smaller than sphere)
 shaft_radius_mid = 3;      // Radius of main shaft
 shaft_taper_fraction = 1/3; // Fraction of shaft that is tapered
-base_disc_radius = 60;     // Radius of base disc
+base_disc_radius = inner_radius * 0.8;     // Radius of base disc
 base_disc_thickness = 4;   // Thickness of base disc
 
 // ===== DERIVED PARAMETERS =====
@@ -40,7 +40,12 @@ hour_angle = time_offset * 15; // 15 degrees per hour (360/24)
 
 // Rotation for longitude (annulus rotates about z-axis)
 // Start with edge center at 0° longitude aligned with x-axis
-longitude_rotation = longitude;
+longitude_rotation = - longitude;
+
+support_radius = inner_radius + support_width;
+
+// Height to reach earth_tilt elevation with half-angle cone
+solstice_height = inner_radius * sin(earth_tilt);
 
 // ===== HELPER MODULES =====
 
@@ -49,24 +54,22 @@ module annulus() {
     // Cone slope is half of earth_tilt
     cone_angle = earth_tilt / 2;
     
-    // Height to reach earth_tilt elevation with half-angle cone
-    outer_height = inner_radius * sin(earth_tilt);
-    inner_height = outer_height + 0.1; // Add small amount to avoid z-fighting
+    inner_height = solstice_height + 0.2; // Add small amount to avoid z-fighting
     
     difference() {
         // Outer cones - cut at earth_tilt elevation
         union() {
             // Upper cone (0° to earth_tilt elevation)
-            cylinder(h = outer_height, 
+            cylinder(h = solstice_height, 
                     r1 = outer_radius, 
-                    r2 = outer_radius - outer_height * tan(cone_angle), 
+                    r2 = outer_radius - solstice_height * tan(cone_angle), 
                     $fn = segments);
             
             // Lower cone (0° to -earth_tilt elevation)
             rotate([180, 0, 0])
-                cylinder(h = outer_height, 
+                cylinder(h = solstice_height, 
                         r1 = outer_radius, 
-                        r2 = outer_radius - outer_height * tan(cone_angle), 
+                        r2 = outer_radius - solstice_height * tan(cone_angle), 
                         $fn = segments);
         }
         
@@ -79,9 +82,9 @@ module annulus() {
                     $fn = segments);
             
             // Lower cone - extend slightly to avoid z-fighting
-            translate([0, 0, -0.1]) // Offset to avoid z-fighting at bottom
+            translate([0, 0, 0.1]) // Offset to avoid z-fighting at bottom
                 rotate([180, 0, 0])
-                    cylinder(h = inner_height, 
+                    cylinder(h = inner_height+0.2, 
                             r1 = inner_radius, 
                             r2 = inner_radius - inner_height * tan(cone_angle), 
                             $fn = segments);
@@ -98,7 +101,7 @@ module hour_numbers(top_face = true, rotation_offset = 0) {
         for (cycle = [0:1]) {
             // Calculate angle for this hour (starting from 0° = x-axis edge center)
             // Rotate counterclockwise (when viewed from +z) for increasing hours
-            angle = -((hour - 1) + cycle * 12) * (360 / segments) + rotation_offset - (360 / segments / 2);
+            angle = -((hour ) + cycle * 12) * (360 / segments) + rotation_offset - (360 / segments / 2);
             
             // Calculate radial position on the inner surface
             r = inner_radius * cos(earth_tilt / 2);
@@ -111,11 +114,12 @@ module hour_numbers(top_face = true, rotation_offset = 0) {
             // Position and orient the text
             rotate([0, 0, angle])
                 translate([r, 0, z_pos])
-                    rotate([0, top_face ? cone_angle : -cone_angle, 0]) // Tilt radially into surface
+                    rotate([0, top_face ? -cone_angle : cone_angle, 0]) // Tilt radially into surface
                         rotate([90, 0, 90])
                             rotate([0, 0, (latitude < 0) ? 180 : 0]) // Flip for southern hemisphere
-                                linear_extrude(height = text_height)
-                                    text(str(hour), size = text_size, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
+                                rotate([0, 180, 0])
+                                    linear_extrude(height = 3 * text_height)
+                                        text(str(hour), size = text_size, halign = "center", valign = "center", font = "Liberation Sans:style=Bold");
         }
     }
 }
@@ -126,7 +130,7 @@ module support_arc() {
     difference() {
         // Outer disc
         rotate([90, 0, 0])
-            cylinder(h = support_thickness, r = inner_radius + support_width, center = true, $fn = 100);
+            cylinder(h = support_thickness, r = support_radius, center = true, $fn = 100);
         
         // Cut out middle to avoid z-fighting
         rotate([90, 0, 0])
@@ -135,13 +139,13 @@ module support_arc() {
         // Select quadrant based on latitude
         if (latitude >= 0) {
             // Keep lower +x quadrant for positive latitude
-            translate([0, 0, 100])
+            translate([0, 0, 100 + solstice_height])
                 cube([200, 200, 200], center = true); // Remove upper half
             translate([-100, 0, 0])
                 cube([200, 200, 200], center = true); // Remove -x half
         } else {
             // Keep upper +x quadrant for negative latitude
-            translate([0, 0, -100])
+            translate([0, 0, -100 - solstice_height])
                 cube([200, 200, 200], center = true); // Remove lower half
             translate([-100, 0, 0])
                 cube([200, 200, 200], center = true); // Remove -x half
@@ -153,7 +157,7 @@ module support_arc() {
 module support_shaft() {
     // Calculate arc radius to match support_arc
     arc_radius = inner_radius - inner_radius * tan(earth_tilt) * tan(earth_tilt / 2);
-    shaft_length = arc_radius;
+    shaft_length = support_radius;
     taper_length = shaft_length * shaft_taper_fraction;
     straight_length = shaft_length - taper_length;
     
@@ -180,7 +184,7 @@ module support_shaft() {
 
 // Base disc
 module base_disc() {
-    cylinder(h = base_disc_thickness, r = base_disc_radius, center = true, $fn = 100);
+    cylinder(h = base_disc_thickness, r = base_disc_radius, center = false, $fn = 100);
 }
 
 // ===== MAIN ASSEMBLY =====
@@ -188,14 +192,14 @@ module base_disc() {
 // Cut plane through y-axis - normal makes angle with -x axis = latitude
 module cut_plane() {
     rotate([0, latitude, 0])
-        translate([-200, 0, 0])
-            cube([400, 400, 400], center = true);
+        translate([-outer_radius, 0, 0])
+            cube(2 * ( outer_radius ), center = true);
 }
 
 union() {
     // Step 1-3: Create annulus with text, rotate by longitude, then cut
-    rotate([0, 0, longitude_rotation]) {
-        difference() {
+    difference() {
+        rotate([0, 0, longitude_rotation]) {
             rotate([0, 0, hour_angle]) {
                 // Annulus with embossed text
                 difference() {
@@ -205,34 +209,25 @@ union() {
                     hour_numbers(top_face = false, rotation_offset = 360/segments); // Offset by 1 segment
                 }
             }
-            
-            // Cut by plane through y-axis
-            cut_plane();
         }
+            
+        // Cut by plane through y-axis
+        cut_plane();
     }
     
     // Step 4: Add support structures (only rotated by hour_angle, not longitude)
-    rotate([0, 0, hour_angle]) {
-        // Central sphere
-        sphere(r = sphere_radius, $fn = 64);
-        
-        // Support arc
-        support_arc();
-        
-        // Tapered shaft
-        support_shaft();
-        
-        // Base disc - rotated to be perpendicular to cut plane normal
-        // Position at end of support arc
-        arc_radius = inner_radius;
-        if (latitude >= 0) {
-            translate([0, 0, -arc_radius])
-                rotate([latitude, 0, 0])
-                    base_disc();
-        } else {
-            translate([0, 0, arc_radius])
-                rotate([latitude, 0, 0])
-                    base_disc();
-        }
-    }
+    // Central sphere
+    sphere(r = sphere_radius, $fn = 64);
+    
+    // Support arc
+    support_arc();
+    
+    // Tapered shaft
+    support_shaft();
+    
+    // Base disc - rotated to be perpendicular to cut plane normal
+    // Position at end of support arc
+    rotate([0, -latitude, 0])
+        translate([0, 0, -support_radius])
+            base_disc();    
 }
