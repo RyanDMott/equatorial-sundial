@@ -81,17 +81,18 @@ analemma_groove();
 The sundial is an **equatorial** design: its annular ring sits parallel to
 Earth's equator when flat its base at the printed latitude.
 
-1. Mount or hold the sundial on a level surface.
+1. Place the sundial base on a level surface.
    The top cut should be level with the horizon.
-2. Rotate the whole assembly so the support arc points toward true North
-   (Northern Hemisphere) or true South (Southern Hemisphere).  Use a compass
-   and correct for **magnetic declination** for your location.
-   The engraved numbers should face the equator.
+2. Orient the whole assembly so the support arc behind the annulus
+   points toward true North (Northern Hemisphere) or true South (Southern Hemisphere).  
+   Use a compass and correct for **magnetic declination** for your location.
+   The inside of the annulus should face the equator.
 
 ### Reading the time
 
 The small central sphere casts a shadow onto the inside of the annular ring.
 Read the hour number nearest the centre of the shadow. 
+The annular ring's facet edges mark the top of each hour.
 Use the lower set of engraved numbers if clocks are on daylight saving time.
 
 ### Converting to clock time
@@ -101,7 +102,7 @@ fast or slow relative to a perfect clock throughout the year.
 A timelapse video of photos at noon across a whole year would show 
 the sun's shadow tracing a figure eight from top in winter to bottom in summer
 centered on the 12:00 line but offset up to 16 minutes from it.
-The analemma groove encodes this offset (shown for Northern Hemisphere):
+The analemma boss on the base encodes this offset (shown for Northern Hemisphere):
 
 - The **x axis** (left–right) represents the EoT in minutes at the same scale as the sundial.
   Positive x (right) means the shadow is fast/ahead — subtract those minutes.
@@ -129,6 +130,10 @@ The analemma groove encodes this offset (shown for Northern Hemisphere):
    you should probably read the upper set of numbers, and vice-versa.
  - The ring is cut off at the horizon such that the shadow reaches the edge
    at sunrise and sunset. 
+
+For example, suppose the shadow is approaching the top of a northern sundial and lies near the facet edge between the "1" and the "2" but closer to the "2". The corresponding lower numbers are "2" and "3" but are not used near winter. The shadow lies 25% of the way across the "2" facet so it looks like it reads "2:15" and late autumn. However the rising side of the top of the analemma curve  (behind the arrow) shows the shadow is shifted about 25% of a facet to the right. So subtract 15 minutes from the shadow and read "2:00".
+
+With the same time on a southern sundial in the same time zone but in the southern hemisphere, the shadow will fall near the bottom of the sundial between the "3" and the "2". In this case the "3" and "2" are closer and summer "Daylight Saving" time should be used if the local time uses a summer offset. In this orientation the analemma curve is wider at the bottom, and because the shadow has been falling we read the left side of the curve and know the shadow is shifted 15 minutes to the left. Because southern sundials advance from right in the morning to left in the evening, this still means subtracting 15 minutes from the time, leaving us with "3:00".
 
 ---
 
