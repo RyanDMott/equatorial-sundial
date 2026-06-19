@@ -54,8 +54,9 @@ support_radius = inner_radius + support_width;
 solstice_height = inner_radius * sin(earth_tilt);
 
 // shift base towards center of mass. Close except near equator?
-base_offset = inner_radius * 0.25 * ( is_northern ? 1 : - 1 );
-spacer_length = 2 * ( base_disc_radius - base_offset ) - 1;
+base_offset_abs = inner_radius * 0.25;
+base_offset = base_offset_abs * ( is_northern ? 1 : - 1 );
+spacer_length = 2 * ( base_disc_radius - base_offset_abs ) - 1;
 
 // ===== HELPER MODULES =====
 
@@ -171,24 +172,13 @@ module support_shaft() {
     taper_length = shaft_length * shaft_taper_fraction;
     straight_length = shaft_length - taper_length;
     
-    if (latitude >= 0) {
-        // Shaft going down for positive latitude
-        translate([0, 0, -shaft_length]) {
-            // Tapered section (top 1/3 nearest sphere)
-            translate([0, 0, straight_length])
-                cylinder(h = taper_length, r1 = shaft_radius_mid, r2 = shaft_radius_top, $fn = 32);
-            
-            // Straight section (bottom 2/3)
-            cylinder(h = straight_length, r = shaft_radius_mid, $fn = 32);
-        }
-    } else {
-        // Shaft going up for negative latitude
-        // Straight section (bottom 2/3)
-        cylinder(h = straight_length, r = shaft_radius_mid, $fn = 32);
-        
+    translate([0, 0, -shaft_length]) {
         // Tapered section (top 1/3 nearest sphere)
         translate([0, 0, straight_length])
             cylinder(h = taper_length, r1 = shaft_radius_mid, r2 = shaft_radius_top, $fn = 32);
+        
+        // Straight section (bottom 2/3)
+        cylinder(h = straight_length, r = shaft_radius_mid, $fn = 32);
     }
 }
 
@@ -264,7 +254,14 @@ union() {
     sphere(r = sphere_radius, $fn = 64);
     
     // Tapered shaft
-    support_shaft();
+    
+    if (latitude >= 0) {
+        // Shaft going down for positive latitude
+        support_shaft();
+    } else {
+        mirror([0, 0, 1])
+        support_shaft();
+    }
     
     // Base disc - rotated to be perpendicular to cut plane normal
     // Position at end of support arc
