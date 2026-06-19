@@ -19,8 +19,8 @@ include <analemma_2030.scad>
 ANALEMMA_R   = 50;        // projection radius (mm)
 GROOVE_WIDTH = 0.5;       // total width of groove (mm)
 GROOVE_DEPTH = 0.3;       // depth  of groove (mm)
-ARROW_LENGTH = 1.4;       // arrowhead tip-to-base (mm)
-ARROW_WIDTH  = 1.0;       // arrowhead base width  (mm)
+ARROW_LENGTH = 3;       // arrowhead tip-to-base (mm)
+ARROW_WIDTH  = 2;       // arrowhead base width  (mm)
 
 // Demo-slab dimensions
 SLAB_HALF_W  = 16;        // half-width  in x (mm)
@@ -92,9 +92,12 @@ module groove_lobe(pts) {
 // Triangle in a local frame where +Y is "forward", rotated into world
 // coords and translated to the Jan-1 point.  Extruded to groove depth.
 // ---------------------------------------------------------------------------
+
 module analemma_arrowhead() {
-    p0 = analemma_xy(ANALEMMA_DATA[0]);
-    p1 = analemma_xy(ANALEMMA_DATA[1]);
+    i0 = 0;
+    i1 = 15; // HACK lookahead ~ arrowhead length instead of one day
+    p0 = analemma_xy(ANALEMMA_DATA[i0]);
+    p1 = analemma_xy(ANALEMMA_DATA[i1]);
 
     dx = p1[0] - p0[0];
     dy = p1[1] - p0[1];
@@ -103,7 +106,7 @@ module analemma_arrowhead() {
     angle = atan2(dx, dy);
 
     translate([p0[0], p0[1], 0])
-        rotate([0, 0, angle])
+        rotate([0, 0, -angle])
             linear_extrude(height = GROOVE_DEPTH)
                 polygon([
                     [ 0,                ARROW_LENGTH ],   // tip
