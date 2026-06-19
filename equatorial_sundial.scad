@@ -81,8 +81,8 @@ module annulus() {
 
 // Add hour numbers embossed on annulus face
 module hour_numbers(top_face = true, rotation_offset = 0) {
-    for (hour = 1; hour <= 12; hour++) {
-        for (cycle = 0; cycle < 2; cycle++) {
+    for (hour = [1:12]) {
+        for (cycle = [0:1]) {
             // Calculate angle for this hour (starting from 0° = x-axis edge center)
             // Rotate counterclockwise (when viewed from +z) for increasing hours
             angle = -((hour - 1) + cycle * 12) * (360 / segments) + rotation_offset - (360 / segments / 2);
