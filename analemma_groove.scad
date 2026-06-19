@@ -1,15 +1,15 @@
 // analemma_groove.scad
 //
 // Engraves the analemma curve as a groove on a flat surface.
-// The curve is the locus  (x, y) = ( R·sin(EoT·0.25°),  R·sin(decl°) )
+// The curve is the locus  (x, y) = ( R*sin(EoT*0.25 deg),  R*sin(decl deg) )
 // for each day of the year, where EoT is in minutes and decl in degrees.
 //
 // Requires: analemma_2030.scad  (include'd below)
 //
 // Public modules:
-//   analemma_groove()       – groove + arrowhead as a positive solid
+//   analemma_groove()       - groove + arrowhead as a positive solid
 //                             (subtract from your own surface)
-//   analemma_demo_slab()    – a rectangular slab with the groove already cut
+//   analemma_demo_slab()    - a rectangular slab with the groove already cut
 
 include <analemma_2030.scad>
 
@@ -32,8 +32,8 @@ SLAB_THICK   = 3;         // thickness       (mm)
 // ---------------------------------------------------------------------------
 
 // One ANALEMMA_DATA entry  ->  [x, y] in mm.
-// sin() in OpenSCAD takes degrees, which is what we want for declination.
-// EoT is in minutes; multiply by 0.25 to convert to degrees first.
+// sin() in OpenSCAD takes degrees already.
+// EoT is in minutes; * 0.25 converts to degrees.
 function analemma_xy(entry) =
     [ ANALEMMA_R * sin(entry[0] * 0.25),
       ANALEMMA_R * sin(entry[1])
@@ -43,54 +43,54 @@ function analemma_xy(entry) =
 function analemma_points(a, b) =
     [ for (i = [a : b]) analemma_xy(ANALEMMA_DATA[i]) ];
 
-// Reverse a vector of points.  (No built-in reverse() in OpenSCAD.)
-function reverse_pts(pts) =
-    [ for (i = [len(pts)-1 : -1 : 0]) pts[i] ];
+// ---------------------------------------------------------------------------
+// Lobe geometry
+//
+// The analemma self-intersects exactly once, between the segments
+// day102->103 and day242->243 (1-based), at approx (-0.15, +7.77) mm.
+// Splitting there gives two lobes, each a simple (non-self-intersecting)
+// closed curve.  Python brute-force search confirmed zero self-intersections
+// in either lobe.
+//
+// The lobe endpoints (indices 102 and 242) are 0.25 mm apart — well within
+// the 0.5 mm groove width — so polygon()'s implicit closing edge is fully
+// buried inside the stripe and invisible.
+//
+//   Lobe 1 (lower, wraps through January):
+//       indices 242 .. 364, then 0 .. 102
+//   Lobe 2 (upper):
+//       indices 102 .. 242
+//
+// Each lobe is turned into a stripe via the standard dilate-minus-erode
+// idiom:
+//       difference() {
+//           offset(+GROOVE_WIDTH/2)  polygon(lobe_points);
+//           offset(-GROOVE_WIDTH/2)  polygon(lobe_points);
+//       }
+// This is well-defined because both lobes have nonzero area and the
+// erosion (0.25 mm) is much smaller than any feature size.
+// ---------------------------------------------------------------------------
+
+function lobe1_points() = concat(analemma_points(242, 364),
+                                 analemma_points(0,   102));
+function lobe2_points() = analemma_points(102, 242);
 
 // ---------------------------------------------------------------------------
-// Open-path stripe via the "degenerate loop" trick:
-//
-//   polygon() always closes its point list.  If we feed it a *closed*
-//   loop of zero width — forward points followed by the same points in
-//   reverse — the resulting polygon has zero area but the correct
-//   topology.  offset(+r) then inflates it into a uniform stripe of
-//   width 2r around the open path, with rounded ends.  No spurious
-//   closing edge appears because the forward and reverse edges overlap
-//   exactly.
+// Groove lobe – dilate-minus-erode stripe, extruded to groove depth
 // ---------------------------------------------------------------------------
-function stripe_loop(pts) = concat(pts, reverse_pts(pts));
-
-// ---------------------------------------------------------------------------
-// Self-intersection split
-//
-// Brute-force segment search (done offline in Python) found exactly one
-// crossing: between the segment day102->103 and day242->243  (1-based),
-// i.e. 0-based indices 101->102 and 241->242.
-// Splitting at indices 102 and 242 produces three arcs each free of
-// self-intersection, safe for offset().
-//
-//   Arc A:  0  .. 102   (Jan  1 – Apr 12)
-//   Arc B:  102 .. 242  (Apr 12 – Aug 30)   <- upper lobe
-//   Arc C:  242 .. 364  (Aug 30 – Dec 31)
-// ---------------------------------------------------------------------------
-SPLIT_1 = 102;
-SPLIT_2 = 242;
-
-// ---------------------------------------------------------------------------
-// Groove arc – one non-self-intersecting piece of the curve
-// ---------------------------------------------------------------------------
-module groove_arc(a, b) {
+module groove_lobe(pts) {
     linear_extrude(height = GROOVE_DEPTH)
-        offset(r = GROOVE_WIDTH / 2)
-            polygon(stripe_loop(analemma_points(a, b)));
+        difference() {
+            offset(r = +GROOVE_WIDTH / 2)  polygon(pts);
+            offset(r = -GROOVE_WIDTH / 2)  polygon(pts);
+        }
 }
 
 // ---------------------------------------------------------------------------
 // Arrowhead at Jan 1 (index 0), pointing toward Jan 2 (index 1).
 //
-// Built as a triangle in a local frame where +Y is the forward direction,
-// then rotated into world coordinates and translated to the Jan-1 point.
-// Extruded to the same depth as the groove.
+// Triangle in a local frame where +Y is "forward", rotated into world
+// coords and translated to the Jan-1 point.  Extruded to groove depth.
 // ---------------------------------------------------------------------------
 module analemma_arrowhead() {
     p0 = analemma_xy(ANALEMMA_DATA[0]);
@@ -98,8 +98,8 @@ module analemma_arrowhead() {
 
     dx = p1[0] - p0[0];
     dy = p1[1] - p0[1];
-    // atan2(x, y) gives the angle from +Y toward +X, which is exactly
-    // what rotate([0,0,angle]) needs to map local +Y onto (dx, dy).
+    // atan2(x, y) -> angle from +Y toward +X, exactly what rotate([0,0,a])
+    // needs to map local +Y onto the (dx, dy) tangent.
     angle = atan2(dx, dy);
 
     translate([p0[0], p0[1], 0])
@@ -119,9 +119,8 @@ module analemma_arrowhead() {
 // ---------------------------------------------------------------------------
 module analemma_groove() {
     union() {
-        groove_arc(0,       SPLIT_1);
-        groove_arc(SPLIT_1, SPLIT_2);
-        groove_arc(SPLIT_2, 364);
+        groove_lobe(lobe1_points());
+        groove_lobe(lobe2_points());
         analemma_arrowhead();
     }
 }
@@ -132,10 +131,11 @@ module analemma_groove() {
 module analemma_demo_slab() {
     difference() {
         // Slab: top face flush at z = 0
-        translate([0, 0, -SLAB_THICK])
+        translate([0, 0, -SLAB_THICK/2])
             cube([2*SLAB_HALF_W, 2*SLAB_HALF_H, SLAB_THICK], center = true);
 
         // Groove cuts downward from z = 0
+        translate([0, 0, -0.01])
         analemma_groove();
     }
 }

@@ -1,6 +1,8 @@
 // Equatorial Sundial - Parametric design for 3D printing
 // The annulus is aligned with Earth's equator, and a sphere casts shadows to indicate time
 
+use <analemma_groove.scad>
+
 // ===== INPUT PARAMETERS =====
 latitude = 51.5 * 0 + 1 * 50.11;           // Latitude of location (degrees, positive = North)
 longitude = -0.1 * 0 + 14.44 * 1;         // Longitude of location (degrees, positive = East)
@@ -35,7 +37,7 @@ is_northern = latitude > 0;
 
 // Calculate time offset (hours difference between local time and London)
 effective_time_now = time_now - (is_daylight_saving ? 1 : 0);
-time_offset = effective_time_now - time_london;
+time_offset = ( effective_time_now - time_london + 12 ) % 24 - 12;
 
 // Hour angle rotation (counterclockwise for time ahead of London)
 hour_angle = time_offset * 15; // 15 degrees per hour (360/24)
@@ -51,7 +53,7 @@ support_radius = inner_radius + support_width;
 solstice_height = inner_radius * sin(earth_tilt);
 
 // shift base towards center of mass. Close except near arctic circle.
-base_offset = inner_radius * 0.2 * ( is_northern ? 1 : - 1 );
+base_offset = inner_radius * 0.25 * ( is_northern ? 1 : - 1 );
 
 // ===== HELPER MODULES =====
 
@@ -190,7 +192,35 @@ module support_shaft() {
 
 // Base disc
 module base_disc() {
-    cylinder(h = base_disc_thickness, r = base_disc_radius, center = false, $fn = 100);
+    time_str = str(time_offset > 0 ? "+" : "-", abs(time_offset), "H GMT");
+    union()
+    {
+        cylinder(h = base_disc_thickness, r = base_disc_radius, 
+            center = false, $fn = 100);
+        translate([0,0,base_disc_thickness-0.01])
+            union(){
+                translate([0, 10, 0])
+                    rotate([0,0,90])
+                    mirror([1,0,0])
+                    analemma_groove(); 
+                linear_extrude(0.4)
+                    union(){
+                        translate([0,15,0])
+                            rotate([0,0,180])
+                            text("shadow offset", size=3, 
+                                halign="center", valign="top");   
+                        translate([0,-5,0])
+                            text(str("Lat: ", latitude), size=3, 
+                                halign="center", valign="top");
+                        translate([0,-10,0])
+                            text(str("Lon: ", longitude), size=3, 
+                                halign="center", valign="top");
+                        translate([0,-15,0])
+                            text(time_str, size=3, 
+                                halign="center", valign="top");
+                    }
+            }
+    }
 }
 
 // ===== MAIN ASSEMBLY =====
