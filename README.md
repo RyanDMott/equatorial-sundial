@@ -118,6 +118,18 @@ The analemma groove encodes this offset (shown for Northern Hemisphere):
 2. Read the x position of that point on the curve.  
 3. Add or subtract that distance from the sundial reading, to get standard clock time.  
 
+### Additional readings
+
+ - The shadow's vertical location indicates time of year. The shadow ranges from
+   * the bottom edge at the summer solstice
+   * the top edge at the winter solstice
+   * the middle crease at spring and autumn equinoxes
+   Note that the transition from standard to Daylight Saving time does not generally
+   happen at equinoxes. But in general, if the shadow is well into the top half,
+   you should probably read the upper set of numbers, and vice-versa.
+ - The ring is cut off at the horizon such that the shadow reaches the edge
+   at sunrise and sunset. 
+
 ---
 
 ## How it works (brief)
@@ -132,3 +144,7 @@ you and the sun at apparent solar noon, and adjusted for your time zone
 offset relative to London (UTC) at render time.  A second set of markings
 offset by one face (15°) is engraved on the underside for daylight saving
 reference.
+
+## Extension ideas
+ - Cut grooves at the facet edges to make the grid more visible.
+ - Check southern hemisphere logic
