@@ -50,8 +50,8 @@ module annulus() {
     cone_angle = earth_tilt / 2;
     
     // Height to reach earth_tilt elevation with half-angle cone
-    outer_height = outer_radius * tan(earth_tilt);
-    inner_height = inner_radius * tan(earth_tilt);
+    outer_height = inner_radius * sin(earth_tilt);
+    inner_height = outer_height + 0.1; // Add small amount to avoid z-fighting
     
     difference() {
         // Outer cones - cut at earth_tilt elevation
@@ -72,18 +72,19 @@ module annulus() {
         
         // Inner cones (to create hollow annulus) - also cut at earth_tilt elevation
         union() {
-            // Upper cone
+            // Upper cone - extend slightly to avoid z-fighting
             cylinder(h = inner_height, 
                     r1 = inner_radius, 
                     r2 = inner_radius - inner_height * tan(cone_angle), 
                     $fn = segments);
             
-            // Lower cone
-            rotate([180, 0, 0])
-                cylinder(h = inner_height, 
-                        r1 = inner_radius, 
-                        r2 = inner_radius - inner_height * tan(cone_angle), 
-                        $fn = segments);
+            // Lower cone - extend slightly to avoid z-fighting
+            translate([0, 0, -0.1]) // Offset to avoid z-fighting at bottom
+                rotate([180, 0, 0])
+                    cylinder(h = inner_height, 
+                            r1 = inner_radius, 
+                            r2 = inner_radius - inner_height * tan(cone_angle), 
+                            $fn = segments);
         }
     }
 }
@@ -99,8 +100,8 @@ module hour_numbers(top_face = true, rotation_offset = 0) {
             // Rotate counterclockwise (when viewed from +z) for increasing hours
             angle = -((hour - 1) + cycle * 12) * (360 / segments) + rotation_offset - (360 / segments / 2);
             
-            // Calculate radial position (middle of annulus thickness)
-            r = (inner_radius + outer_radius) / 2;
+            // Calculate radial position on the inner surface
+            r = inner_radius * cos(earth_tilt / 2);
             
             // Calculate vertical position based on face
             z_pos = top_face ? 
@@ -121,27 +122,31 @@ module hour_numbers(top_face = true, rotation_offset = 0) {
 
 // Support arc connecting sphere to annulus
 module support_arc() {
-    // Arc extends from annulus to z-axis in y-z plane (rotated 90° from x-z)
-    // Use inner radius at earth_tilt elevation to ensure connection
-    arc_radius = inner_radius - inner_radius * tan(earth_tilt) * tan(earth_tilt / 2);
-    arc_angle = 90; // Always 90 degrees
-    
-    // Rotate to y-z plane (90° from x-z) to align with disc axis
-    rotate([0, 0, 90]) // Rotate to y-axis
-        rotate([90, 0, 0]) // Rotate to y-z plane
-            translate([0, 0, -support_thickness/2]) // Center on y-z plane
-                if (latitude >= 0) {
-                    // Arc going downward (negative z) for positive latitude
-                    rotate([0, 0, 180])
-                        rotate_extrude(angle = arc_angle, $fn = 100)
-                            translate([arc_radius, 0, 0])
-                                square([support_width, support_thickness], center = true);
-                } else {
-                    // Arc going upward (positive z) for negative latitude
-                    rotate_extrude(angle = arc_angle, $fn = 100)
-                        translate([arc_radius, 0, 0])
-                            square([support_width, support_thickness], center = true);
-                }
+    // Create a disc section in the x-z plane
+    difference() {
+        // Outer disc
+        rotate([90, 0, 0])
+            cylinder(h = support_thickness, r = inner_radius + support_width, center = true, $fn = 100);
+        
+        // Cut out middle to avoid z-fighting
+        rotate([90, 0, 0])
+            cylinder(h = support_thickness + 2*support_width, r = inner_radius, center = true, $fn = 100);
+        
+        // Select quadrant based on latitude
+        if (latitude >= 0) {
+            // Keep lower +x quadrant for positive latitude
+            translate([0, 0, 100])
+                cube([200, 200, 200], center = true); // Remove upper half
+            translate([-100, 0, 0])
+                cube([200, 200, 200], center = true); // Remove -x half
+        } else {
+            // Keep upper +x quadrant for negative latitude
+            translate([0, 0, -100])
+                cube([200, 200, 200], center = true); // Remove lower half
+            translate([-100, 0, 0])
+                cube([200, 200, 200], center = true); // Remove -x half
+        }
+    }
 }
 
 // Tapered shaft connecting sphere to support arc
@@ -187,44 +192,47 @@ module cut_plane() {
             cube([400, 400, 400], center = true);
 }
 
-// First apply hour angle rotation, then longitude rotation, then cut
-rotate([0, 0, longitude_rotation]) {
-    difference() {
-        rotate([0, 0, hour_angle]) {
-            union() {
-                // Main annulus with hour numbers
+union() {
+    // Step 1-3: Create annulus with text, rotate by longitude, then cut
+    rotate([0, 0, longitude_rotation]) {
+        difference() {
+            rotate([0, 0, hour_angle]) {
+                // Annulus with embossed text
                 difference() {
                     annulus();
                     // Subtract hour numbers (emboss into surface)
                     hour_numbers(top_face = true, rotation_offset = 0);
                     hour_numbers(top_face = false, rotation_offset = 360/segments); // Offset by 1 segment
                 }
-                
-                // Central sphere
-                sphere(r = sphere_radius, $fn = 64);
-                
-                // Support arc in x-z plane
-                support_arc();
-                
-                // Tapered shaft
-                support_shaft();
-                
-                // Base disc - rotated to be perpendicular to cut plane normal
-                // Position at end of support arc
-                arc_radius = inner_radius - inner_radius * tan(earth_tilt) * tan(earth_tilt / 2);
-                if (latitude >= 0) {
-                    translate([0, 0, -arc_radius])
-                        rotate([latitude, 0, 0])
-                            base_disc();
-                } else {
-                    translate([0, 0, arc_radius])
-                        rotate([latitude, 0, 0])
-                            base_disc();
-                }
             }
+            
+            // Cut by plane through y-axis
+            cut_plane();
         }
+    }
+    
+    // Step 4: Add support structures (only rotated by hour_angle, not longitude)
+    rotate([0, 0, hour_angle]) {
+        // Central sphere
+        sphere(r = sphere_radius, $fn = 64);
         
-        // Cut by plane through y-axis
-        cut_plane();
+        // Support arc
+        support_arc();
+        
+        // Tapered shaft
+        support_shaft();
+        
+        // Base disc - rotated to be perpendicular to cut plane normal
+        // Position at end of support arc
+        arc_radius = inner_radius;
+        if (latitude >= 0) {
+            translate([0, 0, -arc_radius])
+                rotate([latitude, 0, 0])
+                    base_disc();
+        } else {
+            translate([0, 0, arc_radius])
+                rotate([latitude, 0, 0])
+                    base_disc();
+        }
     }
 }
