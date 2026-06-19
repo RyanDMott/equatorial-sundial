@@ -1,0 +1,17 @@
+I want to design in OpenSCAD a 3D-printed device that functions as a sundial but for simplicity traces a sphere's shadow along the inside of a annulus parallel with earth's equator instead of the usual stick tracing a shadow on a horizontal disc.
+
+Because the sundial's tilt and markings are specific to one location, the OpenSCAD program should have input parameters for latitude, longitude, time now, time in London, and whether time now is standard or daylight saving time.
+
+Start with an annulus about the z axis with 24-segments ie 24 vertical edges, and horizontal edges at -23.44, 0, and 23.44 degrees of elevation. This could probably be done most easily by subtracting four cones with $fn=24 from four outer cones. A 50mm inner radius would be a nice size. Cut off the annulus a few mm above and below the edges at +- 23.44 degrees. At 0 degrees longitude, the edge center, not the edge vertex, should be aligned with the x axis. Nonzero longitude angles rotate it about z.
+
+Emboss two cycles of the numbers 1-12 on the inside of each face of the annulus, ascending in clockwise order when the annulus viewed from the positive z axis. The text should be upside-down for a negative latitude angle. If time now equals time in London and longitude angle is zero, the number 12 should be on the upper annulus face directly above the x axis. The text should be shifted counterclockwise (relative to the annulus before its longitude angle rotation) by 1/24th of a rotation (ie by one annulus face) for each hour the time now is ahead of the time in London. Subtract one hour from the time now if it is marked as daylight saving time. Apply the numbers before rotating the annulus by the longitude angle.
+
+The same numbers but rotated clockwise 1/24th of a rotation should appear on the bottom. These will allow for daylight saving time in the US.
+
+After rotation, cut off the annulus by a plane passing through the y axis. The input latitude angle determines the angle that the plane normal makes with the negative x axis.
+
+At the center of the annulus (ie at the origin) place a small sphere of radius annulus_radius * tan(sun_angular_width) where sun_angular_width = 0.5, plus a 20% margin.
+
+Add a support arc that connects to the outer surface of the annulus at the xy-plane (with some intersection with the body, though superficial enough to not intersect the innter surface). The arc should extend from there along the x-z plane either upward to the positive z axis (for negative latitude angles) or downward to the negative z axis (for positive latitude angles). A narrow tapered shaft along the z axis should connect the central sphere to this arc.
+
+A disc intersecting the arc should serve as a base for the assembly (though it will be slanted in the model). Rotate it about the y axis by latitude angle such that its axis of symmetry coincides with the normal of the annulus cut-off plane ie the bottom of the disc should be parallel with the cut-off plane.
