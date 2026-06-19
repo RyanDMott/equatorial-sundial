@@ -25,11 +25,13 @@ support_thickness = 3;     // Thickness of support arc
 shaft_radius_top = sphere_radius * 0.7;  // Radius at sphere (30% smaller than sphere)
 shaft_radius_mid = 3;      // Radius of main shaft
 shaft_taper_fraction = 1/3; // Fraction of shaft that is tapered
-base_disc_radius = inner_radius * 0.8;     // Radius of base disc
+base_disc_radius = inner_radius * 0.5;     // Radius of base disc
 base_disc_thickness = 4;   // Thickness of base disc
 
 // ===== DERIVED PARAMETERS =====
 outer_radius = inner_radius + annulus_thickness;
+
+is_northern = latitude > 0;
 
 // Calculate time offset (hours difference between local time and London)
 effective_time_now = time_now - (is_daylight_saving ? 1 : 0);
@@ -42,10 +44,14 @@ hour_angle = time_offset * 15; // 15 degrees per hour (360/24)
 // Start with edge center at 0° longitude aligned with x-axis
 longitude_rotation = - longitude;
 
+// outer radius of support arc
 support_radius = inner_radius + support_width;
 
 // Height to reach earth_tilt elevation with half-angle cone
 solstice_height = inner_radius * sin(earth_tilt);
+
+// shift base towards center of mass. Close except near arctic circle.
+base_offset = inner_radius * 0.2 * ( is_northern ? 1 : - 1 );
 
 // ===== HELPER MODULES =====
 
@@ -230,6 +236,6 @@ union() {
     // Base disc - rotated to be perpendicular to cut plane normal
     // Position at end of support arc
     rotate([0, -latitude, 0])
-        translate([0, 0, -support_radius])
+        translate([base_offset, 0, -support_radius])
             base_disc();    
 }
